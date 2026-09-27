@@ -35,11 +35,9 @@ Minimizar tiempo / costo de entregas en una ciudad.
 - Programación dinámica → TSP con memoización
 - DP en grafos → caminos óptimos con estados
 
-## Ensayo escrito
+## Informe grupal
 
-```
-(Colocar link del Docs)
-```
+https://docs.google.com/document/d/1iFfdhpS1B9t0JLK-5X4ryxJ0kjc8Zn6g/edit?usp=sharing&ouid=102863531412755059126&rtpof=true&sd=true
 
 ## Presentación
 
