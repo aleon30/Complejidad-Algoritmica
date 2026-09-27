@@ -23,8 +23,9 @@ num_vertices = len(df)
 
 grafo = Grafo(num_vertices)
 
-for fila in df.itertuples():
-    punto = Punto(fila.index, fila.x, fila.y, fila.name)
-    grafo.vertices.append(punto)
+for index, fila in enumerate(df.itertuples()):
+    punto = Punto(index, fila.x, fila.y, fila.name)
+    grafo.agregar_vertice(punto)
 
+grafo.generar_aristas()
 grafo.dibujar_grafo()
