@@ -46,7 +46,7 @@ class Grafo:
                 )
             )
 
-            for distancia, otro_indice in vecinos[:3]:
+            for distancia, otro_indice in vecinos[:6]:
                 conexiones.add((min(indice, otro_indice), max(indice, otro_indice), distancia))
 
         for inicio_indice, fin_indice, peso in sorted(conexiones):
