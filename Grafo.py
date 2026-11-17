@@ -46,7 +46,7 @@ class Grafo:
                 )
             )
 
-            for distancia, otro_indice in vecinos[:6]:
+            for distancia, otro_indice in vecinos[:7]:
                 conexiones.add((min(indice, otro_indice), max(indice, otro_indice), distancia))
 
         for inicio_indice, fin_indice, peso in sorted(conexiones):
@@ -55,9 +55,8 @@ class Grafo:
             self.lista_adyacencia[inicio_indice].append((fin_indice, peso))
             self.lista_adyacencia[fin_indice].append((inicio_indice, peso))
             self.aristas.append(Arista(inicio, fin).segmento)
-        
-    # Implementamos el algoritmo de Dijkstra para encontrar el camino mínimo entre 2 puntos
-    def camino_minimo(self, inicio, fin):
+
+    def UCS(self, inicio, fin):
         distancias = [math.inf] * self.V
         visitados = [False] * self.V
         distancias[inicio] = 0
@@ -92,6 +91,126 @@ class Grafo:
 
         while actual != inicio:
             anterior = anteriores[actual]
+            recorrido.append(Arista(self.vertices[anterior], self.vertices[actual]).segmento)
+            recorrido_nombres.append(self.vertices[actual][2])
+            actual = anterior
+        recorrido_nombres.append(self.vertices[inicio][2])
+
+        self.recorrido_minimo = recorrido[::-1]
+        self.recorrido_minimo_nombres = recorrido_nombres[::-1]
+
+        return self.recorrido_minimo
+    
+    # Implementamos el algoritmo de Dijkstra para encontrar el camino mínimo entre 2 puntos
+    def Dijkstra(self, inicio, fin):
+        distancias = [math.inf] * self.V
+        visitados = [False] * self.V
+        distancias[inicio] = 0
+        anteriores = [None] * self.V
+        cola = [(0, inicio, -1)]
+
+        while cola:
+            distancia_actual, actual, anterior = heapq.heappop(cola)
+            if visitados[actual]:
+                continue
+
+            visitados[actual] = True
+            distancias[actual] = distancia_actual
+            anteriores[actual] = anterior
+
+            if actual == fin:
+                break
+
+            for vecino, peso_arista in self.lista_adyacencia[actual]:
+                distancia = distancia_actual + peso_arista
+                if not visitados[vecino]:
+                    heapq.heappush(cola, (distancia, vecino, actual))
+
+        if math.isinf(distancias[fin]):
+            self.recorrido_minimo = []
+            self.recorrido_minimo_nombres = []
+            return self.recorrido_minimo
+
+        recorrido = []
+        recorrido_nombres = []
+        actual = fin
+
+        while actual != inicio:
+            anterior = anteriores[actual]
+            recorrido.append(Arista(self.vertices[anterior], self.vertices[actual]).segmento)
+            recorrido_nombres.append(self.vertices[actual][2])
+            actual = anterior
+        recorrido_nombres.append(self.vertices[inicio][2])
+
+        self.recorrido_minimo = recorrido[::-1]
+        self.recorrido_minimo_nombres = recorrido_nombres[::-1]
+
+        return self.recorrido_minimo
+    
+    def Bellman_Ford(self, inicio, fin):
+        distancias = [math.inf] * self.V
+        distancias[inicio] = 0
+        anteriores = [None] * self.V
+
+        for _ in range(self.V - 1):
+            for u in range(self.V):
+                for v, peso in self.lista_adyacencia[u]:
+                    if distancias[u] + peso < distancias[v]:
+                        distancias[v] = distancias[u] + peso
+                        anteriores[v] = u
+
+        # No realizamos el segundo bucle de relajación para detectar ciclos negativos, 
+        # ya que no es necesario para este caso.
+
+        if math.isinf(distancias[fin]):
+            self.recorrido_minimo = []
+            self.recorrido_minimo_nombres = []
+            return self.recorrido_minimo
+
+        recorrido = []
+        recorrido_nombres = []
+        actual = fin
+
+        while actual != inicio:
+            anterior = anteriores[actual]
+            recorrido.append(Arista(self.vertices[anterior], self.vertices[actual]).segmento)
+            recorrido_nombres.append(self.vertices[actual][2])
+            actual = anterior
+        recorrido_nombres.append(self.vertices[inicio][2])
+
+        self.recorrido_minimo = recorrido[::-1]
+        self.recorrido_minimo_nombres = recorrido_nombres[::-1]
+
+        return self.recorrido_minimo
+
+    def Floyd_Warshall(self, inicio, fin):
+        distancias = [[math.inf] * self.V for _ in range(self.V)]
+        anteriores = [[None] * self.V for _ in range(self.V)]
+
+        for u in range(self.V):
+            distancias[u][u] = 0
+            for v, peso in self.lista_adyacencia[u]:
+                distancias[u][v] = peso
+                anteriores[u][v] = u
+
+        for k in range(self.V):
+            for i in range(self.V):
+                for j in range(self.V):
+                    if distancias[i][k] + distancias[k][j] < distancias[i][j]:
+                        distancias[i][j] = distancias[i][k] + distancias[k][j]
+                        anteriores[i][j] = anteriores[k][j]
+
+        if math.isinf(distancias[inicio][fin]):
+            self.recorrido_minimo = []
+            self.recorrido_minimo_nombres = []
+            return self.recorrido_minimo
+
+        recorrido = []
+        recorrido_nombres = []
+        actual = fin
+
+        while actual != inicio:
+            anterior = anteriores[inicio][actual]
             recorrido.append(Arista(self.vertices[anterior], self.vertices[actual]).segmento)
             recorrido_nombres.append(self.vertices[actual][2])
             actual = anterior
