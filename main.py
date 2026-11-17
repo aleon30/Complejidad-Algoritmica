@@ -1,7 +1,7 @@
 import pandas as pd
 from Grafo import *
 
-df = pd.read_csv("dataset/destinos_turisticos_lima.csv")
+df = pd.read_csv("dataset/oficinas_lima.csv")
 
 def escalar_a_rango(serie, nuevo_min, nuevo_max):
    min_val = serie.min()

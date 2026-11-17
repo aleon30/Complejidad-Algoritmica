@@ -1,84 +1,131 @@
+# Utilidades para crear la carpeta de salida y pausar entre consultas a los mirrors.
+import os
+import time
+
+# Librerías para convertir los resultados a CSV y consultar Overpass.
 import pandas as pd
 import requests
 
-# URL del servidor espejo de Kumi Systems para extraer el dataset de OpenStreetMap
-url = "https://overpass.kumi.systems/api/interpreter"
+# Servidores alternativos de Overpass, usados si uno no responde o está ocupado.
+MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+]
 
-# Cabecera User-Agent obligatoria para evitar el error 429
+# Identifica el cliente ante los servidores de OpenStreetMap.
 headers = {
-    'User-Agent': 'LimaTourismGraphBuilder/1.0 (Educational Project; contacto@universidad.edu)'
+    "User-Agent": "LimaOfficeGraphBuilder/1.0 (Educational Project; contacto@universidad.edu)"
 }
 
-# Query para obtener los lugares turísticos en Lima
+# La consulta limita los resultados a oficinas con nombre dentro del recuadro de Lima.
+# "out center" devuelve coordenadas centrales para vías y relaciones; "qt" optimiza el orden.
 query = """
-[out:json][timeout:120];
-area["name"="Lima"]["admin_level"="6"]->.searchArea;
-(
-  nwr["tourism"]["name"~"."](area.searchArea);
-  nwr["historic"]["name"~"."](area.searchArea);
-  nwr["leisure"="park"]["name"~"."](area.searchArea);
-  nwr["amenity"~"arts_centre|theatre|cinema|marketplace"]["name"~"."](area.searchArea);
-);
-out center;
+[out:json][timeout:45];
+nwr["office"]["name"](-12.35,-77.20,-11.70,-76.65);
+out center qt;
 """
 
-print("Descargando destinos turísticos de Lima...")
+
+def fetch_overpass(query_str: str, mirrors: list[str]) -> dict:
+    """Consulta los mirrors en orden y devuelve la primera respuesta con elementos."""
+    for base_url in mirrors:
+        print(f"Probando mirror: {base_url} ...")
+        try:
+            # Envía la consulta y espera como máximo 55 segundos por respuesta.
+            resp = requests.post(
+                base_url,
+                data={"data": query_str},
+                headers=headers,
+                timeout=55,
+            )
+            # Si el servidor está saturado, intenta con el siguiente mirror.
+            if resp.status_code in (429, 502, 503, 504):
+                print(f"  -> Servidor ocupado ({resp.status_code}), probando siguiente.")
+                continue
+
+            resp.raise_for_status()
+            payload = resp.json()
+
+            # Overpass puede incluir detalles de avisos junto a los resultados.
+            if "remark" in payload:
+                print(f"  -> Aviso del servidor: {payload['remark']}")
+
+            if payload.get("elements"):
+                print(f"  -> Respuesta válida con {len(payload['elements'])} elementos.")
+                return payload
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            # La falta de respuesta de un mirror no impide probar los siguientes.
+            print("  -> Sin respuesta en este mirror, probando siguiente.")
+        # Da un breve respiro al servicio antes del próximo intento.
+        time.sleep(1)
+
+    raise RuntimeError("Ningún mirror de Overpass respondió con datos.")
+
+
+def has_essentials(record: dict) -> bool:
+    """Descarta registros sin los campos necesarios para identificar y ubicar la oficina."""
+    for key in ("name", "type", "lat", "lon"):
+        val = record.get(key)
+        if val is None or str(val).strip() == "":
+            return False
+    return True
 
 try:
-  response = requests.post(url, data={"data": query}, headers=headers, timeout=130)
-
-  if response.status_code == 200:
-    data = response.json()
+    # Descarga los datos y obtiene los elementos devueltos por Overpass.
+    data = fetch_overpass(query, MIRRORS)
     elements = data.get("elements", [])
-    print(f"¡Conexión exitosa! Se obtuvieron {len(elements)} elementos brutos.")
 
     lista_destinos = []
-
     for el in elements:
-      tags = el.get("tags", {})
-      nombre = tags.get("name")
+        # Las etiquetas contienen los atributos asignados a cada elemento en OpenStreetMap.
+        tags = el.get("tags", {})
+        nombre = tags.get("name")
+        tipo = tags.get("office")
 
-      if not nombre:
-        continue
+        # Nodos tienen lat/lon propios; vías y relaciones usan el centro calculado por Overpass.
+        lat = el.get("lat") if "lat" in el else el.get("center", {}).get("lat")
+        lon = el.get("lon") if "lon" in el else el.get("center", {}).get("lon")
 
-      lat, lon = None, None
+        # Usa la primera etiqueta de dirección disponible como distrito.
+        distrito = (
+            tags.get("addr:district")
+            or tags.get("addr:suburb")
+            or tags.get("addr:city")
+        )
 
-      if "lat" in el and "lon" in el:
-        lat = el["lat"]
-        lon = el["lon"]
-      elif "center" in el:
-        lat = el["center"].get("lat")
-        lon = el["center"].get("lon")
+        # Normaliza las etiquetas OSM en las columnas que se guardarán en el CSV.
+        candidato = {
+            "name": nombre,
+            "type": tipo,
+            "district": distrito,
+            "email": tags.get("email") or tags.get("contact:email"),
+            "opening_hours": tags.get("opening_hours") or tags.get("contact:opening_hours"),
+            "phone": tags.get("phone") or tags.get("contact:phone"),
+            "lat": lat,
+            "lon": lon,
+        }
 
-      if lat and lon:
-        lista_destinos.append({"name": nombre, "lat": lat, "lon": lon})
+        # Conserva solo registros con los campos mínimos definidos en has_essentials.
+        if has_essentials(candidato):
+            lista_destinos.append(candidato)
 
-    # Procesamiento de datos con Pandas
+    # Convierte los registros en tabla; elimina nombres duplicados y limita a 1500 filas.
     df_export = pd.DataFrame(lista_destinos)
-    df_export = df_export.drop_duplicates(subset=["name"]).reset_index(
-        drop=True
-    )
+    if not df_export.empty:
+        df_export = df_export.drop_duplicates(subset=["name"]).reset_index(drop=True)
+        df_export = df_export.head(1500)
 
-    # Limitación de 1500 datos
-    if len(df_export) > 1500:
-      df_export = df_export.head(1500)
-
-    # Guardar dataset en un archivo .csv dentro de la carpeta "dataset"
-    nombre_archivo = "destinos_turisticos_lima.csv"
-    df_export.to_csv("dataset/destinos_turisticos_lima.csv", index=False, encoding="utf-8")
+    # Crea la carpeta si aún no existe y exporta el CSV en UTF-8.
+    os.makedirs("dataset", exist_ok=True)
+    ruta_salida = os.path.join("dataset", "oficinas_lima.csv")
+    df_export.to_csv(ruta_salida, index=False, encoding="utf-8")
 
     print(
-        f"¡Listo! Dataset guardado como '{nombre_archivo}' con un total exacto"
-        f" de {len(df_export)} destinos."
+        f"¡Listo! Guardadas {len(df_export)} oficinas en '{ruta_salida}' "
+        f"(de {len(elements)} elementos brutos)."
     )
 
-  else:
-    print(
-        f"El servidor respondió con el código de error {response.status_code}:"
-        f" {response.text}"
-    )
-
-except requests.exceptions.Timeout:
-  print("La consulta tardó demasiado. El servidor está saturado en este momento.")
 except Exception as e:
-  print(f"Ocurrió un error inesperado: {e}")
+    # Informa fallos de consulta, procesamiento o escritura del archivo.
+    print(f"Error final: {e}")
