@@ -1,83 +1,136 @@
-# Complejidad Algorítmica 💻 - Grupo 1
+# Complejidad Algorítmica
 
-| Integrantes |
-| ----------- |	
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Pandas](https://img.shields.io/badge/Pandas-Data-150458?logo=pandas&logoColor=white)](https://pandas.pydata.org/)
+[![Matplotlib](https://img.shields.io/badge/Matplotlib-Gráficos-11557C)](https://matplotlib.org/)
+
+> Proyecto del Grupo 1 para modelar oficinas y puntos de interés de Lima mediante un grafo, visualizar sus conexiones y calcular rutas mínimas entre puntos.
+
+## 👥 Integrantes
+
+| Integrante |
+| --- |
 | Leon Ojeda, Adrian Alejandro |
 | Huarancca Evangelista, Duval Paul |
 | Quispe Serrano, Julio Frank |
 
-## Caso del proyecto
+---
 
-**Caso 1: Optimización de rutas de reparto (logística urbana)**
+## 📝 Caso de estudio
 
-### Aplicación real
+**Caso 1: Optimización de rutas de reparto en logística urbana**
 
-- UPS
-- Rappi
+El sistema representa ubicaciones reales de Lima como vértices de un grafo. Cada oficina puede conectarse con las oficinas más cercanas y las aristas utilizan la distancia euclidiana normalizada como peso.
 
-### Problema
+| Aplicaciones reales | Objetivo |
+| --- | --- |
+| UPS | Reducir tiempo y costo de las rutas |
+| Rappi | Optimizar recorridos de reparto urbano |
 
-Minimizar tiempo / costo de entregas en una ciudad.
+### Algoritmos implementados
 
-### Algoritmos aplicables
+| Algoritmo | Tipo | Complejidad sobre vértices `V` y aristas `E` |
+| --- | --- | --- |
+| UCS | Exploración con cola de prioridad | `O((V + E) log V)` |
+| Dijkstra | Camino mínimo con pesos no negativos | `O((V + E) log V)` |
+| Bellman-Ford | Caminos mínimos con relajación iterativa | `O(V × E)` |
+| Floyd-Warshall | Caminos mínimos entre todos los pares | `O(V³)` |
 
-- Fuerza Bruta → probar todas las rutas (TSP pequeño)
-- Backtracking → podar rutas no óptimas
-- Divide y vencerás → dividir zonas geográficas
-- Grafos → modelar calles/intersecciones
-- BFS/DFS → exploración básica
-- Ordenamiento topológico → dependencias de entregas
-- SCC → detectar zonas con alta conectividad
-- UFDS → agrupar zonas
-- MST → construir red base mínima
-- Flujo máximo → capacidad de tráfico/logística
-- Voraces → heurísticas tipo vecino más cercano
-- Programación dinámica → TSP con memoización
-- DP en grafos → caminos óptimos con estados
+---
 
-## Informe grupal
+## 📊 Dataset
 
-https://docs.google.com/document/d/1iFfdhpS1B9t0JLK-5X4ryxJ0kjc8Zn6g/edit?usp=sharing&ouid=102863531412755059126&rtpof=true&sd=true
+El archivo `oficinas_lima.csv` incluye hasta 1500 oficinas obtenidas dentro del área aproximada de Lima. Algunos campos pueden estar vacíos según la información disponible en OpenStreetMap.
 
-## Presentación
+| Columna | Descripción |
+| --- | --- |
+| `name` | Nombre de la oficina |
+| `type` | Categoría de la oficina |
+| `district` | Distrito o zona aproximada |
+| `email` | Correo de contacto |
+| `opening_hours` | Horario de atención |
+| `phone` | Número de teléfono |
+| `lat` | Latitud |
+| `lon` | Longitud |
 
-```
-(Colocar link del Canva)
-```
+---
 
-## Estructura del proyecto
+## 🤔 Cómo funciona
+
+1. `generar_dataset.py` consulta **Overpass API** para obtener oficinas de Lima.
+2. El CSV conserva hasta 1500 oficinas únicas con nombre y coordenadas.
+3. `main.py` carga las columnas `name`, `lat` y `lon`.
+4. Las coordenadas se normalizan a rangos compatibles con el plano visual.
+5. `Grafo.py` crea los vértices y conecta cada punto con sus vecinos cercanos.
+6. Matplotlib muestra el grafo y permite explorar rutas desde la interfaz gráfica.
+
+<p align="center">
+  <img src="assets/diagrama_flujo_proyecto.png" alt="Diagrama de flujo del proyecto" width="650">
+</p>
+
+---
+
+## 📂 Estructura del proyecto
 
 ```text
-└── aleon30-complejidad-algoritmica/
-    ├── README.md                          # Documentación del proyecto
-    ├── Grafo.py                           # Implementación del grafo
-    ├── main.py                            # Ejecutable principal
-    ├── requirements.txt                   # Dependencias del proyecto
-    └── dataset/ 
-        ├── generar_dataset.py             # Generación del dataset
-        └── destinos_turisticos_lima.csv   # Dataset generado
+Complejidad-Algoritmica/
+├── main.py                    # Carga el dataset y ejecuta la visualización
+├── Grafo.py                   # Punto, arista, grafo y algoritmos de rutas
+├── requirements.txt           # Dependencias de Python
+├── README.md                  # Documentación del proyecto
+├── assets/
+│   └── diagrama_flujo_proyecto.png
+└── dataset/
+    ├── generar_dataset.py     # Genera el CSV desde OpenStreetMap
+    └── oficinas_lima.csv      # 1500 registros de oficinas
 ```
 
-<img src="assets/diagrama_flujo_proyecto.png" width="500">
+### Responsabilidad de cada archivo
 
-## Requisitos
+- **`main.py`** — lee el dataset con Pandas, normaliza latitud/longitud y crea una instancia de `Grafo`.
+- **`Grafo.py`** — define `Punto`, `Arista` y `Grafo`; genera las aristas, ofrece los algoritmos y dibuja el grafo.
+- **`generar_dataset.py`** — consulta tres servidores de Overpass, valida los registros y exporta el CSV.
+- **`oficinas_lima.csv`** — contiene nombres, tipos, distritos, contacto y coordenadas geográficas.
 
-Este proyecto está desarrollado para ejecutarse localmente con:
+---
 
-- Python 3.11
+## 🔧 Requisitos
 
-### Dependencias principales
+- Python **3.11** o superior
+- Entorno gráfico compatible con Matplotlib
 
-| Librería | Versión recomendada | Uso dentro del proyecto |
-| --- | --- | --- |
-| `matplotlib` | `>= 3.10.0` | Visualización del grafo |
-| `numpy` | `>= 2.4.6` | Implementación del grafo |
-| `pandas` | `>= 2.2.3` | Manipulación del dataset |
+| Librería | Uso |
+| --- | --- |
+| `pandas` | Lectura y preparación del CSV |
+| `numpy` | Coordenadas y cálculos de segmentos |
+| `matplotlib` | Renderizado interactivo del grafo |
+| `requests` | Consulta de OpenStreetMap desde el generador |
 
-### Instalación local
+## 💾 Instalación y ejecución
 
-Se pueden instalar las dependencias usando el archivo `requirements.txt` en la terminal:
+### Instalación de dependencias
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### Ejecución del archivo principal
 
 ```bash
-pip install -r requirements.txt
+python main.py
 ```
+
+Se abre una ventana de Matplotlib con todas las ubicaciones. Los puntos morados representan las oficinas y las conexiones representan relaciones con los vecinos cercanos.
+
+### Regenerar el dataset
+
+```bash
+python dataset/generar_dataset.py
+```
+
+El script intenta varios servidores de Overpass y reemplaza `dataset/oficinas_lima.csv`. Esta operación requiere conexión a Internet.
+
+## Recursos del proyecto
+
+- [Informe grupal](https://docs.google.com/document/d/1iFfdhpS1B9t0JLK-5X4ryxJ0kjc8Zn6g/edit?usp=sharing&ouid=102863531412755059126&rtpof=true&sd=true)
+- Presentación: *pendiente de agregar el enlace de Canva*
