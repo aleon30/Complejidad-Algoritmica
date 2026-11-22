@@ -299,7 +299,7 @@ class Grafo:
                 texto_camino.set_text(f"Origen: {nombre}")
             else:
                 inicio, fin = seleccionados
-                camino = self.camino_minimo(inicio, fin)
+                camino = self.Dijkstra(inicio, fin)
                 aristas_camino_minimo.set_segments(camino)
                 if camino or inicio == fin:
                     ax.set_title(
