@@ -122,7 +122,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-Se abre una ventana de Matplotlib con todas las ubicaciones. Los puntos morados representan las oficinas y las conexiones representan relaciones con los vecinos cercanos. Para usar Floyd-Warshall, pulsa **Precalcular Floyd-Warshall** en la parte superior derecha; la interfaz avisa que demora aproximadamente 16 segundos y muestra solo el tiempo real al terminar. El botón permanece visible, pero se desactiva tras el precálculo. Luego selecciona uno de los cuatro algoritmos y haz clic en los puntos de origen y destino para visualizar el camino mínimo en un recuadro fijo que ajusta el tamaño del texto según la longitud de la ruta, su tiempo de ejecución y la información de contacto de ambos puntos en el panel lateral.
+Se abre una ventana de Matplotlib con todas las ubicaciones. Los puntos celestes representan las oficinas y las conexiones representan relaciones con los vecinos cercanos. Para usar Floyd-Warshall, pulsa **Precalcular Floyd-Warshall** en la parte superior derecha; la interfaz avisa que demora aproximadamente 16 segundos y muestra solo el tiempo real al terminar. El botón permanece visible, pero se desactiva tras el precálculo. Luego selecciona uno de los cuatro algoritmos y haz clic en los puntos de origen y destino para visualizar el camino mínimo en un recuadro fijo que ajusta el tamaño del texto según la longitud de la ruta, su tiempo de ejecución y la información de contacto de ambos puntos en el panel lateral.
 
 ### Regenerar el dataset
 
