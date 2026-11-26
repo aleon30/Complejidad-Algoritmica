@@ -1,31 +1,25 @@
 import pandas as pd
-from Grafo import *
+from Grafo_algoritmos import Grafo, Punto
+from interfaz_visual import dibujar_grafo
 
+# Lee el dataset y conserva longitud/latitud en los ejes geograficos x/y.
 df = pd.read_csv("dataset/oficinas_lima.csv")
 
-def escalar_a_rango(serie, nuevo_min, nuevo_max):
-   min_val = serie.min()
-   max_val = serie.max()
-   
-   if min_val == max_val:
-      return serie * 0
-   
-   return (
-      (serie - min_val) / (max_val - min_val)
-  ) * (nuevo_max - nuevo_min) + nuevo_min
+df["x"] = df["lon"]
+df["y"] = df["lat"]
 
-df["x"] = escalar_a_rango(df["lon"], -100, 100)
-df["y"] = escalar_a_rango(df["lat"], -1000, 1000)
+# Conserva solo las columnas que se pasan a cada vertice del grafo.
+df = df[["name", "type", "district", "email", "opening_hours", "phone", "x", "y",]]
 
-df = df[["name", "x", "y"]]
-
-num_vertices = len(df)
-
-grafo = Grafo(num_vertices)
+# Convierte cada fila en un vertice con sus coordenadas y datos de contacto.
+puntos = []
 
 for index, fila in enumerate(df.itertuples()):
-    punto = Punto(index, fila.x, fila.y, fila.name)
-    grafo.agregar_vertice(punto)
+   punto = Punto(index, fila.x, fila.y, fila.name, tipo=fila.type, distrito=fila.district,
+                 email=fila.email, horario_atencion=fila.opening_hours, telefono=fila.phone)
+   puntos.append(punto)
 
-grafo.generar_aristas()
-grafo.dibujar_grafo()
+# Se inicializa la clase Grafo con los puntos para crear las conexiones
+grafo = Grafo(len(puntos), puntos)
+# Se abre la interfaz visual para dibujar el grafo con los puntos y sus conexiones
+dibujar_grafo(grafo)
