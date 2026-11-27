@@ -6,6 +6,27 @@ import numpy as np
 import math
 import textwrap
 import time
+import tracemalloc
+
+
+def _medir_ejecucion(funcion, *argumentos):
+    iniciar_trazado = not tracemalloc.is_tracing()
+    if iniciar_trazado:
+        tracemalloc.start()
+    memoria_inicial, _ = tracemalloc.get_traced_memory()
+    tracemalloc.reset_peak()
+    tiempo_inicio = time.perf_counter()
+    try:
+        resultado = funcion(*argumentos)
+    finally:
+        duracion = time.perf_counter() - tiempo_inicio
+        _, memoria_pico = tracemalloc.get_traced_memory()
+        if iniciar_trazado:
+            tracemalloc.stop()
+
+    memoria_kb = max(0, memoria_pico - memoria_inicial) / 1024
+    return resultado, duracion, memoria_kb
+
 
 # Función para dibujar el grafo y manejar la interacción con el usuario.
 def dibujar_grafo(grafo):
@@ -49,7 +70,8 @@ def dibujar_grafo(grafo):
                                         transform=panel_contacto.transAxes, va="top",
                                         fontsize=8, wrap=True, fontfamily=fuentes_texto,
                                         bbox=estilo_contacto)
-    texto_tiempo = ax.text(0.02, 0.98, "Tiempo de ejecución: —", transform=ax.transAxes,
+    texto_tiempo = ax.text(0.02, 0.98, "Tiempo de ejecución: —\nMemoria utilizada: —",
+                           transform=ax.transAxes,
                            va="top", fontsize=9, bbox={
                                "boxstyle": "round,pad=0.35",
                                "facecolor": "white",
@@ -148,7 +170,7 @@ def dibujar_grafo(grafo):
         grafo.recorrido_minimo = []
         grafo.recorrido_minimo_nombres = []
         aristas_camino_minimo.set_segments([])
-        texto_tiempo.set_text("Tiempo de ejecución: —")
+        texto_tiempo.set_text("Tiempo de ejecución: —\nMemoria utilizada: —")
         actualizar_texto_camino(
             "Advertencia: precalcula las matrices de Floyd-Warshall "
             "con el botón superior derecho antes de usar este algoritmo.",
@@ -163,10 +185,13 @@ def dibujar_grafo(grafo):
             mostrar_advertencia_floyd()
             return
 
-        tiempo_inicio = time.perf_counter()
-        camino = algoritmos[nombre_algoritmo](inicio, fin)
-        duracion = time.perf_counter() - tiempo_inicio
-        texto_tiempo.set_text(f"Tiempo de ejecución: {duracion:.6f} s")
+        camino, duracion, memoria_kb = _medir_ejecucion(
+            algoritmos[nombre_algoritmo], inicio, fin
+        )
+        texto_tiempo.set_text(
+            f"Tiempo de ejecución: {duracion:.6f} s\n"
+            f"Memoria utilizada: {memoria_kb:.2f} kB"
+        )
         aristas_camino_minimo.set_segments(camino)
 
         if camino or inicio == fin:
@@ -192,7 +217,7 @@ def dibujar_grafo(grafo):
         # Cambia el algoritmo activo y recalcula si ambos puntos ya estan seleccionados.
         algoritmo_actual["nombre"] = nombre_algoritmo
         if len(seleccionados) < 2:
-            texto_tiempo.set_text("Tiempo de ejecución: —")
+            texto_tiempo.set_text("Tiempo de ejecución: —\nMemoria utilizada: —")
         for nombre, boton in botones_algoritmo.items():
             color = "lightblue" if nombre == nombre_algoritmo else "0.85"
             boton.color = color
@@ -219,11 +244,23 @@ def dibujar_grafo(grafo):
     def precalcular_floyd(evento):
         # Muestra el estado, mide el precalculo y desactiva el boton al terminar.
         if grafo.floyd_precalculado:
-            if grafo.tiempo_precalculo_floyd is None:
-                texto_tiempo_precalculo.set_text("Precálculo completo; tiempo no medido")
-            else:
-                texto_tiempo_precalculo.set_text("Tiempo de precálculo: "
-                                                 f"{grafo.tiempo_precalculo_floyd:.2f} s")
+            tiempo_precalculo = grafo.tiempo_precalculo_floyd
+            memoria_precalculo = getattr(
+                grafo, "memoria_precalculo_floyd_kb", None
+            )
+            texto_tiempo = (
+                "Tiempo de precálculo: no medido"
+                if tiempo_precalculo is None
+                else f"Tiempo de precálculo: {tiempo_precalculo:.2f} s"
+            )
+            texto_memoria = (
+                "Memoria utilizada: no medida"
+                if memoria_precalculo is None
+                else f"Memoria utilizada: {memoria_precalculo:.2f} kB"
+            )
+            texto_tiempo_precalculo.set_text(
+                f"{texto_tiempo}\n{texto_memoria}"
+            )
             boton_precalculo_floyd.set_active(False)
             boton_precalculo_floyd.color = "0.75"
             boton_precalculo_ax.set_facecolor("0.75")
@@ -233,10 +270,13 @@ def dibujar_grafo(grafo):
 
         texto_tiempo_precalculo.set_text("Precálculo en curso...\nEspera aproximadamente 16 segundos")
         evento.canvas.draw()
-        tiempo_inicio = time.perf_counter()
-        grafo.Floyd_Warshall()
-        grafo.tiempo_precalculo_floyd = time.perf_counter() - tiempo_inicio
-        texto_tiempo_precalculo.set_text(f"Tiempo de precálculo: {grafo.tiempo_precalculo_floyd:.2f} s")
+        _, grafo.tiempo_precalculo_floyd, grafo.memoria_precalculo_floyd_kb = (
+            _medir_ejecucion(grafo.Floyd_Warshall)
+        )
+        texto_tiempo_precalculo.set_text(
+            f"Tiempo de precálculo: {grafo.tiempo_precalculo_floyd:.2f} s\n"
+            f"Memoria utilizada: {grafo.memoria_precalculo_floyd_kb:.2f} kB"
+        )
         boton_precalculo_floyd.set_active(False)
         boton_precalculo_floyd.color = "0.75"
         boton_precalculo_ax.set_facecolor("0.75")
@@ -276,7 +316,7 @@ def dibujar_grafo(grafo):
         if len(seleccionados) == 2:
             seleccionados.clear()
             aristas_camino_minimo.set_segments([])
-            texto_tiempo.set_text("Tiempo de ejecución: —")
+            texto_tiempo.set_text("Tiempo de ejecución: —\nMemoria utilizada: —")
             actualizar_texto_camino(f"Algoritmo: {algoritmo_actual['nombre']} | "
                                     "Camino: selecciona dos puntos")
 
@@ -304,7 +344,7 @@ def dibujar_grafo(grafo):
         latitud_media = math.radians(float(np.mean(y_vals)))
         ax.set_aspect(1 / math.cos(latitud_media), adjustable="box")
 
-    ax.set_xlabel("Longitud")
-    ax.set_ylabel("Latitud")
+    ax.set_xlabel("Eje X")
+    ax.set_ylabel("Eje Y")
 
     plt.show()
